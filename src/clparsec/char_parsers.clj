@@ -2,7 +2,8 @@
   (:use [clojure.algo.monads][clparsec.core][clparsec.primitives])
   (:require [clojure [set :as set]])
   (:import [clparsec.core ErrorMessage]
-           [Character]))
+           [Character])
+  (:refer-clojure :exclude #{newline}))
 
 
 
@@ -18,6 +19,16 @@
 (defn expected-any-char-not-in [s]
   (ErrorMessage. :expected-any-char-not-in (str s)))
 
+(defn newline-return [result]
+  (fn [state]
+    (if-let [state2 (skip-newline state)]
+      (make-success state2 result)
+      (make-failure state (make-parse-error state (expected "newline"))))))
+
+(def pnewline (newline-return \newline))
+
+(def skip-nl (newline-return nil))
+
 (defn char-returnE [c result error]
   (fn [state]
     (if-let [new-state (skip state c)]
@@ -25,7 +36,10 @@
       (make-failure state (make-parse-error state error)))))
 
 (defn char-return [c result]
-  (char-returnE c result (expected-string c)))
+  (condp contains? c
+    *newline-chars* (newline-return result)
+    #{\uFFFF} (throw (IllegalArgumentException. "\uffff (EOS) is not a valid char for pchar/skip-char/char-return"))
+    (char-returnE c result (expected-string c))))
   
 (defn pchar [c]
   (char-return c c))
@@ -126,7 +140,7 @@
     (make-failure state (make-parse-error state (expected "end of file")))))
 
 (defn- find-newline-or-eos [s]
-  (let [newline-eos (conj *newline* \uFFFF)]
+  (let [newline-eos (conj *newline-chars* \uFFFF)]
     (loop [i (dec (count s))]
       (if (>= i 0)
         (if (newline-eos(nth s i))

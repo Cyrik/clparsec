@@ -3,7 +3,7 @@
   (:require [clojure [set :as set]]))
 
 
-(def ^:dynamic *newline* #{(first "\r") (first "\n")})
+(def ^:dynamic *newline-chars* #{(first "\r") (first "\n")})
 (def ^:dynamic *whitespace* #{\space \tab \newline \return \formfeed})
 (defprotocol AReply
   (success? [r]))
@@ -47,7 +47,7 @@
 
 (defn standard-alter-location [character]
   {:pre #{(char? character)}}
-  (if (*newline* character)
+  (if (*newline-chars* character)
     location-inc-line location-inc-column))
 (defn location? [obj]
   (extends? ALocation (type obj)))
@@ -60,20 +60,21 @@
   (skip [state c])
   (next-state [state])
   (state-warnings [state])
-  (state-location [state])
+  (location [state])
   (read-char [state])
   (peep [state])
   (skip-whitespace [state])
   (skip-strn [state strn])
   (read-chars-or-newlines-while [state pred1 pred normalize-n])
-  (end? [state]))
+  (end? [state])
+  (skip-newline [state]))
 
 (defrecord State
   [remainder position location warnings context alter-location]
   AState
     (get-position [this] position)
     (get-remainder [this] remainder)
-    (state-location [this] location)
+    (location [this] location)
     (state-warnings [this] warnings)
     (end? [this] (empty? remainder))
     (next-state [this]
@@ -83,6 +84,8 @@
           :location ((alter-location (first remainder)) location))))
     (skip [this c] (when (=(first remainder)c)
                          (next-state this)))
+    (skip-newline [this] (when (*newline-chars* (first remainder))
+                           (next-state this)))
     (read-char [this] (if-let [c (first remainder)]
                          (list (next-state this) c)
                          nil))
