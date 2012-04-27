@@ -120,7 +120,7 @@
 	                             state))))))
     (skip-strn [this strn] 
                  (let [length (count strn)]
-                   (when (< length (count remainder))
+                   (when (<= length (count remainder))
                      (loop [i 0]
                        (if (< i length)
                          (when (=(nth strn i) (nth remainder i))
@@ -129,15 +129,17 @@
                                 :position (+ position i)
                                 :location (plus-column location i)))))))
     (read-chars-or-newlines-while [this pred1 pred normalize-n] ;todo normalize newlines
-                                    (if (pred1 (first remainder))
+                                  (if-let [c (first remainder)]
+                                    (if (pred1 c)
                                       (loop[state (next-state this)
                                             acc [(first remainder)]]
-                                        (let [frst (peep state)
-                                              res (pred1 frst)]                                              
-                                          (if res
+                                        (if-let [frst (peep state)]                                              
+                                          (if (pred frst)
                                             (recur (next-state state) (conj acc frst))
-                                            (list (apply str acc) state))))
-                                      (list "" this))))
+                                            (list (apply str acc) state))
+                                          (list (apply str acc) state)))
+                                      (list "" this))
+                                    (list "" this))))
 
 
 (defn make-state

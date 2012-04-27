@@ -122,24 +122,24 @@
 (defn skip-none-of-set [chars]
   (skip-satisfyE (comp not chars) (expected-any-char-not-in chars)))
 
-(defn char-lte? [a b]
+(defn- char-lte? [a b]
   (<=(.compareTo a b) 0)) 
-(defn char-gte? [a b]
+(defn- char-gte? [a b]
   (>= (.compareTo a b) 0))
 
 
-(defn- is-ascii-upper? [c]
+(defn is-ascii-upper? [c]
   (and (char-gte? c \A) (char-lte? c \Z)))
 
-(defn- is-ascii-lower? [c]
+(defn is-ascii-lower? [c]
   (and (char-gte? c \a) (char-lte? c \z)))
 
-(defn- is-digit? [c]
+(defn is-digit? [c]
   (and (char-gte? c \0) (char-lte? c \9)))
 
-(defn- is-hex? [c]
+(defn is-hex? [c]
   (or (and (char-gte? c \0) (char-lte? c \9))) (and (char-gte? c \A) (char-lte? c \F)))
-(defn- is-ascii-letter? [c]
+(defn is-ascii-letter? [c]
   (or (is-ascii-upper? c) (is-ascii-lower? c)))
 
 (def ascii-upper (satisfyE is-ascii-upper? (expected "ascii-uppercase-letter")))
@@ -187,7 +187,7 @@
   
 (defn string! [strn result]
   (if-let [newline (find-newline-or-eos strn)]
-    (throw (Exception. "string! may not contain newline in string"))
+    (throw (IllegalArgumentException. "string! may not contain newline in string"))
     (fn [state]
       (if-let [s (skip-strn state strn)]
         (make-success s  result)
@@ -199,8 +199,7 @@
 (defn- many-satisfy-internal [require1 f1 f2 error]
   (fn [state]
     (let [[result state2] (read-chars-or-newlines-while state f1 f2 true)]
-      (println require1 state2 result)
-      (if (and require1 (= (count result) 0))
+      (if (and require1 (not result))
         (make-failure state (make-parse-error state error))
         (make-success state2 result)))))
 

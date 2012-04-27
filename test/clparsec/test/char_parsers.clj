@@ -189,3 +189,43 @@
     (is (= (get-position(:state res))9))
     (is (= (:line (location (:state res))) 5))
     (is (= (:column (location (:state res))) 2))))
+
+(deftest test-spaces1-with-newlines
+  (let [res (run spaces1 "\n \r\t\t\r\n\n ")]
+    (is (= (get-position(:state res))9))
+    (is (= (:line (location (:state res))) 5))
+    (is (= (:column (location (:state res))) 2))))
+
+(deftest test-eof
+  (rok eof "" 0 nil)
+  (rfail eof "1" 0 #{(expected "end of file")}))
+
+(deftest test-empty-pstring-parser
+  (rok (pstring "") "1" 0 ""))
+
+(deftest test-pstring-basics
+  (rok (pstring "1") "1" 1 "1")
+  (rfail (pstring "1") "" 0 #{(expected-string "1")})
+  (rfail (pstring "1") "2" 0 #{(expected-string "1")}))
+
+(deftest test-pstring-lenght2
+  (rfail (pstring "12") "" 0 #{(expected-string "12")})
+  (rfail (pstring "12") "1" 0 #{(expected-string "12")})
+  (rfail (pstring "12") "22" 0 #{(expected-string "12")})
+  (rfail (pstring "12") "13" 0 #{(expected-string "12")})
+  (rok (pstring "12") "1212" 2 "12"))
+
+(deftest test-pstring-doesnt-allow-newlines-eof
+  (do
+    (is (thrown? IllegalArgumentException (pstring "\r")))
+    (is (thrown? IllegalArgumentException (pstring "\n")))
+    (is (thrown? IllegalArgumentException (pstring "\uffff")))
+    (is (thrown? IllegalArgumentException (pstring "\r1")))
+    (is (thrown? IllegalArgumentException (pstring "1\n")))
+    (is (thrown? IllegalArgumentException (pstring "12\n")))))
+
+(deftest test-many-satisfy
+  (rok (many-satisfy is-digit?) "" 0 "")
+  (rok (many-satisfy2 is-digit? is-hex?) "" 0 "")
+  (rok (many-satisfy is-digit?) "123a" 3 "123")
+  (rok (many-satisfy2 is-hex? is-digit? ) "A123123z" 7 "A123123"))
