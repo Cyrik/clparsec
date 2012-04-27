@@ -37,7 +37,7 @@
   ALocation
     (location-code [this] (format "line %s, column %s" line column))
   ALineAndColumnLocation
-    (location-inc-line [this] (assoc this :line (inc line), :column 0))
+    (location-inc-line [this] (assoc this :line (inc line), :column 1))
     (location-inc-column [this] (assoc this :column (inc column)))
     (location-plus-column [this n] (assoc this :column (+ column n))))
 
@@ -134,7 +134,7 @@
 (defn make-state
   "Creates a state with the given parameters."
   [input & {:keys #{location context alter-location}
-            :or {location (make-standard-location 0 0), alter-location
+            :or {location (make-standard-location 1 1), alter-location
                  standard-alter-location}}]
   {:pre #{(or (nil? location) (location? location)) (ifn? alter-location)}}
   (State. input 0 location #{} context alter-location))
@@ -205,3 +205,6 @@
 
 (defn swap-error-messages [reply messages]
   (assoc reply :errors (assoc (:errors reply) :messages messages)))  
+
+(defn run [p str]
+  (p (make-state str)))

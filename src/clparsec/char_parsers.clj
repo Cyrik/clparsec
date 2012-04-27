@@ -61,17 +61,25 @@
 (defn- satisfyE [pred e-msg]
   (fn [state]
     (if-let [c (peep state)]
-      (if (pred c)
-        (make-success (skip-one state) c)
-        (make-failure state (make-parse-error state e-msg)))
+      (case c
+        (\return \newline) (if (pred \newline)
+                             (make-success (skip-newline state) \newline)
+                             (make-failure state (make-parse-error state e-msg)))
+        (if (and (not= c \uffff) (pred c))
+          (make-success (skip-one state) c)
+          (make-failure state (make-parse-error state e-msg))))
       (make-failure state (make-parse-error state e-msg)))))
 
 (defn- skip-satisfyE [pred e-msg]
   (fn [state]
     (if-let [c (peep state)]
-      (if (pred c)
-        (make-success (skip-one state) nil)
-        (make-failure state (make-parse-error state e-msg)))
+      (case c
+        (\return \newline) (if (pred \newline)
+                             (make-success (skip-newline state) nil)
+                             (make-failure state (make-parse-error state e-msg)))
+        (if (and (not= c \uffff) (pred c))
+          (make-success (skip-one state) nil)
+          (make-failure state (make-parse-error state e-msg))))
       (make-failure state (make-parse-error state e-msg)))))
 
 (defn satisfy [pred]
@@ -93,6 +101,13 @@
 (defn any-of-set [chars]
   (satisfyE chars (expected-any-char-in chars)))
 
+(defn skip-any-of [& chars]
+  (let [chars (set chars)]
+    (skip-satisfyE chars (expected-any-char-in chars))))
+
+(defn skip-any-of-set [chars]
+  (skip-satisfyE chars (expected-any-char-in chars)))
+
 (defn none-of [& chars]
   (let [chars (set chars)]
     (satisfyE (comp not chars) (expected-any-char-not-in chars))))
@@ -100,29 +115,36 @@
 (defn none-of-set [chars]
   (satisfyE (comp not chars) (expected-any-char-not-in chars)))
 
+(defn skip-none-of [& chars]
+  (let [chars (set chars)]
+    (skip-satisfyE (comp not chars) (expected-any-char-not-in chars))))
+
+(defn skip-none-of-set [chars]
+  (skip-satisfyE (comp not chars) (expected-any-char-not-in chars)))
+
 (defn char-lte? [a b]
-  (=(.compareTo a b) -1)) 
+  (<=(.compareTo a b) 0)) 
 (defn char-gte? [a b]
-  (= (.compareTo a b) 1))
+  (>= (.compareTo a b) 0))
 
 
 (defn- is-ascii-upper? [c]
-  (and (char-lte? c \A) (char-gte? c \Z)))
+  (and (char-gte? c \A) (char-lte? c \Z)))
 
 (defn- is-ascii-lower? [c]
-  (and (char-lte? c \a) (char-gte? c \z)))
+  (and (char-gte? c \a) (char-lte? c \z)))
 
 (defn- is-digit? [c]
-  (and (char-lte? c \0) (char-gte? c \9)))
+  (and (char-gte? c \0) (char-lte? c \9)))
 
 (defn- is-hex? [c]
-  (or (and (char-lte? c \0) (char-gte? c \9))) (and (char-lte? c \A) (char-gte? c \F)))
+  (or (and (char-gte? c \0) (char-lte? c \9))) (and (char-gte? c \A) (char-lte? c \F)))
 (defn- is-ascii-letter? [c]
   (or (is-ascii-upper? c) (is-ascii-lower? c)))
 
-(def ascii-upper (partial satisfyE is-ascii-upper? (expected "ascii-uppercase-letter")))
-(def ascii-lower (partial satisfyE is-ascii-lower? (expected "ascii-lowercase-letter")))
-(def ascii-letter (partial satisfyE is-ascii-letter? (expected "ascii-uppercase-letter")))
+(def ascii-upper (satisfyE is-ascii-upper? (expected "ascii-uppercase-letter")))
+(def ascii-lower (satisfyE is-ascii-lower? (expected "ascii-lowercase-letter")))
+(def ascii-letter (satisfyE is-ascii-letter? (expected "ascii-letter")))
 
 (defn is-upper-case? [c]
   (Character/isUpperCase c))
@@ -131,18 +153,19 @@
 (defn is-letter? [c]
   (Character/isLetter c))
 
-(def upper (partial satisfyE is-upper-case? (expected "uppercase-letter")))
-(def lower (partial satisfyE is-lower-case? (expected "lower-letter")))
-(def letter (partial satisfyE is-letter? (expected "letter")))
+(def upper (satisfyE is-upper-case? (expected "uppercase-letter")))
+(def lower (satisfyE is-lower-case? (expected "lowercase-letter")))
+(def letter (satisfyE is-letter? (expected "letter")))
 
-(def digit (partial satisfyE is-digit? (expected "decimal-digit")))
-(def hex (partial satisfyE is-hex? (expected "hexadecimal-digit")))
+(def digit (satisfyE is-digit? (expected "decimal-digit")))
+(def hex (satisfyE is-hex? (expected "hexadecimal-digit")))
 
-(def tab (partial satisfyE #(= % \t) (expected "tab")))
+(def tab (satisfyE #(= % \tab) (expected "tab")))
 
 (defn spaces [state]
-  (let [s (skip-whitespace state)]
-    (make-success s)))
+  (if-let [s (skip-whitespace state)]
+    (make-success s)
+    (make-success state)))
 
 (defn spaces1 [state]
   (if-let [s (skip-whitespace state)]
@@ -196,8 +219,4 @@
   (many1-satisfy2L f f label))
 
 
-;;;;;; experimental ;;;;;;;;;;;;;
-
-(defn parse [p str]
-  (p (make-state str)))
 
