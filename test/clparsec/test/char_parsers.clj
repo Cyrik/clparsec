@@ -84,6 +84,20 @@
   (roknl any-char "\r\n" 2 \newline)
   (roknl skip-any-char "\r\n" 2 nil)
   (roknl any-char "\n\n" 1 \newline)
-  (roknl skip-any-char "\n\r" 1 nil)
-  )
+  (roknl skip-any-char "\n\r" 1 nil))
+
+(deftest test-satisfy-errors
+  (rfail (satisfy #(%)) "" 0 #{nil})
+  (rfail (skip-satisfy #(%)) "" 0 #{nil})
+  (rfail (satisfyL #(%) "test") "" 0 #{(expected "test")})
+  (rfail (skip-satisfyL #(%) "test") "" 0 #{(expected "test")}))
+
+(deftest test-satisfy
+  (rok (satisfy #(= % \1)) "1" 1 \1)
+  (rok (satisfy #(= % \tab)) "\t" 1 \tab)
+  (rok (satisfy #(= % \1)) "11" 1 \1)
+  (rfail (satisfy #(= % \1)) "0" 0 #{nil})
+  (rfail (satisfyL #(= % \1) "test") "2" 0 #{(expected "test")})
+  (rfail (satisfyL #(= % \return) "test") "0" 0 #{(expected "test")}))
+
             

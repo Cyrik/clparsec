@@ -60,16 +60,31 @@
 
 (defn- satisfyE [pred e-msg]
   (fn [state]
-    (let [c (peep state)]
+    (if-let [c (peep state)]
       (if (pred c)
         (make-success (skip-one state) c)
-        (make-failure state (make-parse-error state e-msg))))))
+        (make-failure state (make-parse-error state e-msg)))
+      (make-failure state (make-parse-error state e-msg)))))
+
+(defn- skip-satisfyE [pred e-msg]
+  (fn [state]
+    (if-let [c (peep state)]
+      (if (pred c)
+        (make-success (skip-one state) nil)
+        (make-failure state (make-parse-error state e-msg)))
+      (make-failure state (make-parse-error state e-msg)))))
 
 (defn satisfy [pred]
   (satisfyE pred nil))
 
 (defn satisfyL [pred label]
   (satisfyE pred (expected label)))
+
+(defn skip-satisfy [pred]
+  (skip-satisfyE pred nil))
+
+(defn skip-satisfyL [pred label]
+  (skip-satisfyE pred (expected label)))
 
 (defn any-of [& chars]
   (let [chars (set chars)]

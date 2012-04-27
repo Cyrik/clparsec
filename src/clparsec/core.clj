@@ -103,7 +103,7 @@
                                 (list (next-state this) \newline))
                               (list (next-state this) c))))
     (peep [this] (first remainder))
-    (skip-one [this] ((next-state this) nil))
+    (skip-one [this] (next-state this))
     (skip-whitespace [this] (when (*whitespace* (first remainder)) 
                               (loop [state this]
                                   (if (*whitespace* (peep state)) ; check buggy?
