@@ -42,28 +42,48 @@
   (result-failure-internal parser :fail content n-skipped-chars errors))
           
 
-(deftest test-pchar
+(deftest test-basics
   (rok (pchar \space) " " 1 \space )
   (rok (pchar \tab) "\t\t" 1 \tab )
   (rfail (pchar \space) "" 0 #{(expected-string \space)})
-  (rfail (pchar \space) "x" 0 #{(expected-string \space)})
-  
+  (rfail (pchar \space) "x" 0 #{(expected-string \space)}))
+
+(deftest test-newlines-fail
   (rfail (pchar \return) "_\r" 0 #{(expected "newline")})
   (rfail pnewline "_\n" 0 #{(expected "newline")})
-  (rfail pnewline "" 0 #{(expected "newline")})
-  
+  (rfail pnewline "" 0 #{(expected "newline")}))
+
+(deftest test-newlines-ok  
   (roknl pnewline "\r" 1 \newline)
   (roknl (pchar \newline) "\r" 1 \newline)
   (roknl (pchar \return) "\r" 1 \return)
+  (roknl (pchar \newline) "\r\n" 2 \newline)
+  (roknl (pchar \return) "\r\n" 2 \return)
   (roknl (pchar \newline) "\n" 1 \newline)
-  (roknl (pchar \return) "\n" 1 \return)
-  
+  (roknl (pchar \return) "\n" 1 \return))
+
+(deftest test-char-return  
   (rok (skip-char \tab) "\t" 1 nil)
   (rok (char-return \tab 0) "\t" 1 0)
   (roknl skip-nl "\n" 1 nil)
-  (is (thrown? IllegalArgumentException (pchar \uffff)))
+  (roknl (newline-return 0) "\r\n" 2 0) 
   
+  (is (thrown? IllegalArgumentException (pchar \uffff))))
+
+(deftest test-any-char
   (rfail any-char "" 0 #{expected-any-char})
   (rfail skip-any-char "" 0 #{expected-any-char})
+  
+  (rok any-char " " 1 \space)
+  (rok any-char "\ufffe" 1 \ufffe)
+  (rok skip-any-char " " 1 nil)
+  (rok any-char "\t\t" 1 \tab)
+  (rok skip-any-char "\t\t" 1 nil))
+
+(deftest test-any-char-newline
+  (roknl any-char "\r\n" 2 \newline)
+  (roknl skip-any-char "\r\n" 2 nil)
+  (roknl any-char "\n\n" 1 \newline)
+  (roknl skip-any-char "\n\r" 1 nil)
   )
             

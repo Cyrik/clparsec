@@ -48,12 +48,12 @@
   (char-return c nil))
 
 (defn any-char [state]
-    (if-let [[s c] (read-char state)]
+    (if-let [[s c] (read-char-or-newline state)]
       (make-success s c)
       (make-failure state (make-parse-error state expected-any-char))))
       
 (defn skip-any-char [state]
-    (if-let [[s c] (read-char state)]
+    (if-let [[s c] (read-char-or-newline state)]
       (make-success s nil)
       (make-failure state (make-parse-error state expected-any-char))))
 
@@ -140,7 +140,7 @@
     (make-failure state (make-parse-error state (expected "end of file")))))
 
 (defn- find-newline-or-eos [s]
-  (let [newline-eos (conj *newline-chars* \uFFFF)]
+  (let [newline-eos (conj *newline-chars* \uFFFF)] ;buggy?
     (loop [i (dec (count s))]
       (if (>= i 0)
         (if (newline-eos(nth s i))

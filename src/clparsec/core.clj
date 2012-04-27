@@ -3,7 +3,7 @@
   (:require [clojure [set :as set]]))
 
 
-(def ^:dynamic *newline-chars* #{(first "\r") (first "\n")})
+(def ^:dynamic *newline-chars* #{\return \newline "\r\n"})
 (def ^:dynamic *whitespace* #{\space \tab \newline \return \formfeed})
 (defprotocol AReply
   (success? [r]))
@@ -46,7 +46,6 @@
   (StandardLocation. line column))
 
 (defn standard-alter-location [character]
-  {:pre #{(char? character)}}
   (if (*newline-chars* character)
     location-inc-line location-inc-column))
 (defn location? [obj]
@@ -61,13 +60,13 @@
   (next-state [state])
   (state-warnings [state])
   (location [state])
-  (read-char [state])
   (peep [state])
   (skip-whitespace [state])
   (skip-strn [state strn])
   (read-chars-or-newlines-while [state pred1 pred normalize-n])
   (end? [state])
-  (skip-newline [state]))
+  (skip-newline [state])
+  (read-char-or-newline [state]))
 
 (defrecord State
   [remainder position location warnings context alter-location]
@@ -80,15 +79,29 @@
     (next-state [this]
       (when-let [remainder (seq remainder)]
         (assoc this
-          :remainder (next remainder), :position (inc position),
-          :location ((alter-location (first remainder)) location))))
+               :remainder (next remainder), :position (inc position),
+               :location ((alter-location (first remainder)) location))))
     (skip [this c] (when (=(first remainder)c)
                          (next-state this)))
-    (skip-newline [this] (when (*newline-chars* (first remainder))
-                           (next-state this)))
-    (read-char [this] (if-let [c (first remainder)]
-                         (list (next-state this) c)
-                         nil))
+    (skip-newline [this] 
+                  (if (= \return (first remainder))
+                    (if (= \newline (second remainder))
+                      (assoc this 
+                             :remainder (next (next remainder)), :position (+ position 2)
+                             :location ((alter-location "\r\n") location))
+                      (next-state this))
+                    (if (*newline-chars* (first remainder))
+                      (next-state this))))
+    (read-char-or-newline [this]
+                          (if-let [c (first remainder)]
+                            (if (= \return c)
+                              (if (= \newline (second remainder))
+                                (list (assoc this 
+                                             :remainder (next (next remainder)), :position (+ position 2)
+                                             :location ((alter-location "\r\n") location))
+                                      \newline)
+                                (list (next-state this) \newline))
+                              (list (next-state this) c))))
     (peep [this] (first remainder))
     (skip-one [this] ((next-state this) nil))
     (skip-whitespace [this] (when (*whitespace* (first remainder)) 
