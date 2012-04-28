@@ -216,6 +216,37 @@
   (many1-satisfy2 f f))
 (defn many1-satisfyL [f label]
   (many1-satisfy2L f f label))
+(comment
+(defn psign [options c state]
+  (case c
+    \+ (if (:allow-plus options)
+         (list \+ (next-state state))
+         (list nil state))
+    \- (if (:allow-minus options)
+         (list \- (next-state sate))
+         (list nil state))
+    (nil state)))
 
+(defn parse-number-literalE [options state e-msg sign]
+  (let [frst (peek state)
+        next-state (next-state state)
+        scnd (peek next-state)]
+    (if (or (not= frst \0) 
+            (char-lte scnd \9) 
+            (not (some options [:allow-binary :allow-hexadecimal :allow-octal]))
+            (or (= scnd \e) (= scnd \E)))
+      (parse-decimal-literalE [options state e-msg sign])
+      (parse-other-number-litera [options state e-msg sign]))))
 
+(defn number-literalE [options state e-msg]
+  (when-let [frst (peek state)]
+    (let [[sign new-state] (psign options frst state)]
+      (let [scnd (peek new-state)]
+        (if (or (is-digit? scnd) 
+                (and (= c \.) (:allow-fraction options) (:allow-fraction-wo-integer)))
+          (parse-number-literalE options new-state e-msg sign)
+          (if (or check-infi check-nan)
+            (make-success infi or check-nan)
+            (make-failure no-literal)))))))
 
+)
