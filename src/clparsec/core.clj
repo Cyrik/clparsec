@@ -55,11 +55,10 @@
   "The protocol of FnParse states, which must
   be able to return a position."
   (get-remainder [state])
-  (get-position [state])
+  (position [state])
   (skip-one [state])
   (skip [state c])
   (next-state [state])
-  (state-warnings [state])
   (location [state])
   (peep [state])
   (skip-whitespace [state])
@@ -67,15 +66,16 @@
   (read-chars-or-newlines-while [state pred1 pred normalize-n])
   (end? [state])
   (skip-newline [state])
-  (read-char-or-newline [state]))
+  (read-char-or-newline [state])
+  (user-state [state]))
 
 (defrecord State
-  [remainder position location warnings context]
+  [remainder position location user-state]
   AState
-    (get-position [this] position)
+    (position [this] position)
     (get-remainder [this] remainder)
+    (user-state [this] user-state)
     (location [this] location)
-    (state-warnings [this] warnings)
     (end? [this] (empty? remainder))
     (next-state [this]
       (when-let [remainder (seq remainder)]
@@ -144,9 +144,9 @@
 
 (defn make-state
   "Creates a state with the given parameters."
-  [input & {:keys #{location context}
+  [input & {:keys #{location user-state}
             :or {location (make-standard-location 1 1)}}]
-  (State. input 0 location #{} context))
+  (State. input 0 location user-state))
 
 
 (defn- merge2-errors
@@ -192,6 +192,12 @@
   ([state errors]
     (Reply. :fail nil errors state)))
 
+(defn make-fatal-error
+  ([state]
+    (Reply. :fatal nil nil state))
+  ([state errors]
+    (Reply. :fatal nil errors state)))
+
 (defn make-success
   ([state]
     (Reply. :success nil nil state))
@@ -201,11 +207,8 @@
     (Reply. :success result errors state)))
 
 (defn make-parse-error [state message]
-  (ParseError. (get-position state) #{message}))
-(defn return [state]
-  (make-success state))
-(defn zero [state]
-  (make-failure state (make-parse-error state #{})))
+  (ParseError. (position state) #{message}))
+
 
 (defn expected [label]
   (ErrorMessage. :expected label))

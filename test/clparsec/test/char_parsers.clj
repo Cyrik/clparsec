@@ -152,13 +152,13 @@
 
 (deftest test-spaces-with-newlines
   (let [res (run spaces "\n \r\t\t\r\n\n ")]
-    (is (= (get-position(:state res))9))
+    (is (= (position(:state res))9))
     (is (= (:line (location (:state res))) 5))
     (is (= (:column (location (:state res))) 2))))
 
 (deftest test-spaces1-with-newlines
   (let [res (run spaces1 "\n \r\t\t\r\n\n ")]
-    (is (= (get-position(:state res))9))
+    (is (= (position(:state res))9))
     (is (= (:line (location (:state res))) 5))
     (is (= (:column (location (:state res))) 2))))
 

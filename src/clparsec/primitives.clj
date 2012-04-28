@@ -2,6 +2,10 @@
   (:use [clojure.algo.monads][clparsec.core])
   (:require [clojure [set :as set]]))
 
+(defn return [state]
+  (make-success state))
+(defn zero [state]
+  (make-failure state (make-parse-error state #{})))
 
 (defn >>= [p mf]
   (fn [state]
@@ -247,3 +251,25 @@
 (defn create-parser-forwarded-to-atom []
   (let [res (atom (constantly nil))]
     (list #(@res %) res)))
+
+;;;;;;;;; user-state parsers ;;;;;;;;;;;
+
+(defn get-position [state]
+  (make-success state (position state)))
+
+(defn get-user-state [state]
+  (make-success state (user-state state)))
+
+(defn set-user-state [new-user-state]
+  (fn [state]
+    (make-success (assoc state :user-state new-user-state))))
+
+(defn update-user-state [f]
+  (fn [state]
+    (make-success (assoc state :user-state (f (user-state state))))))
+
+(defn user-state-satisfies [pred]
+  (fn [state]
+    (if (pred (user-state state))
+      (make-success state)
+      (make-failure state))))
