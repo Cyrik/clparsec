@@ -2,44 +2,10 @@
   (:use [clparsec.char-parsers])
   (:use [clojure.test])
   (:use [clparsec.core])
+  (:use [clparsec.test.helpers])
   (:import (clparsec.core Reply)))
 
-(defn result-success-internal [with-newline content nskipped-chars result errors parser]
-  (let [state (make-state content)
-        res (parser state)]
-    (do 
-      (is (success? res))
-      (is (= (:result res) result))
-      (is (= (:messages (:errors res)) errors))
-      (is (= (get-position (:state res)) nskipped-chars))
-      (if with-newline
-        (is (=(:line (location (:state res))) 2))))))
 
-(defn rok 
-  "result ok"
-  [parser content n-skipped-chars result]
-  (result-success-internal false content n-skipped-chars result nil parser))
-
-(defn roke 
-  "result ok with error messages"
-  [parser content n-skipped-chars result errors]
-  (result-success-internal false content n-skipped-chars result errors parser))
-
-(defn roknl
-  "result ok with newline"
-  [parser content n-skipped-chars result ]
-  (result-success-internal true content n-skipped-chars result nil parser))
-
-(defn result-failure-internal [parser status content n-skipped-chars errors]
-  (let [state (make-state content)
-        res (parser state)]
-    (do
-      (is (= (:status res) status))
-      (is (= (:messages (:errors res)) errors))
-      (is (= (get-position (:state res)) n-skipped-chars)))))
-
-(defn rfail [parser content n-skipped-chars errors]
-  (result-failure-internal parser :fail content n-skipped-chars errors))
           
 
 (deftest test-basics
