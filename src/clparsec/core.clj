@@ -63,6 +63,7 @@
   (peep [state])
   (skip-whitespace [state])
   (skip-strn [state strn])
+  (skip-and-peek [state])
   (read-chars-or-newlines-while [state pred1 pred normalize-n])
   (end? [state])
   (skip-newline [state])
@@ -82,6 +83,8 @@
         (assoc this
                :remainder (next remainder), :position (inc position),
                :location ((standard-alter-location (first remainder)) location))))
+    (skip-and-peek [this] (let [next-state (next-state this)]
+                            (list (peep next-state) next-state)))
     (skip [this c] (when (=(first remainder)c)
                          (next-state this)))
     (skip-newline [this] 
@@ -103,7 +106,9 @@
                                       \newline)
                                 (list (next-state this) \newline))
                               (list (next-state this) c))))
-    (peep [this] (first remainder))
+    (peep [this] (if-let [res(first remainder)]
+                   res
+                   \uFFFF))
     (skip-one [this] (next-state this))
     (skip-whitespace [this] 
                      (when (*whitespace* (first remainder))

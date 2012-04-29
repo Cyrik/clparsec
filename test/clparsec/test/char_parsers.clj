@@ -195,3 +195,6 @@
   (rok (many-satisfy2 is-digit? is-hex?) "" 0 "")
   (rok (many-satisfy is-digit?) "123a" 3 "123")
   (rok (many-satisfy2 is-hex? is-digit? ) "A123123z" 7 "A123123"))
+
+(deftest test-number-literal
+  (run (number-literal #{} "explo")  "123A"))

@@ -216,37 +216,98 @@
   (many1-satisfy2 f f))
 (defn many1-satisfyL [f label]
   (many1-satisfy2L f f label))
-(comment
-(defn psign [options c state]
+
+(def pdigits (many-satisfy is-digit?))
+(defn- psign [options c state]
   (case c
     \+ (if (:allow-plus options)
-         (list \+ (next-state state))
-         (list nil state))
+         (list \+ (next-state state) #{:has-plus-sign})
+         (list nil state #{}))
     \- (if (:allow-minus options)
-         (list \- (next-state sate))
-         (list nil state))
-    (nil state)))
+         (list \- (next-state state) #{:has-plus-sign})
+         (list nil state #{}))
+    (list nil state #{})))
 
-(defn parse-number-literalE [options state e-msg sign]
-  (let [frst (peek state)
+(defn- p-exp-sign [state]
+  (case (peep state)
+    \+ (list \+ (next-state state))
+    \- (list \- (next-state state))
+    (list "" state)))
+
+(defn- pfraction-part [options state flags]
+  (if (and (= (peep state) \.) (:allow-fraction options))
+    (let [flags (conj flags :has-fraction)
+          [c next-state] (skip-and-peek state)]
+      (if (is-digit? c)
+        (let [pdigit-res (pdigits next-state)]
+          {:errors nil, :state (:state pdigit-res),:flags flags, :result (str \. (:result pdigit-res))})
+        {:errors (expected "decimal digit"), :state next-state, :flags flags, :result "."}))
+    {:errors nil, :state state, :flags flags, :result ""}))
+
+(defn- pexponent-part [options state flags errors]
+  (let [c (peep state)]
+    (if (and (or (= c \e) (= c \E))
+             (not errors)
+             (:allow-exponent options))
+      (let [flags (conj flags :has-exponent)
+            next-state (skip-one state)
+            [e-sign next-state] (p-exp-sign next-state)]
+        (if-not (is-digit? (peep state))
+          (let [pdigit-res (pdigits next-state)]
+            {:errors nil, :state (:state pdigit-res),
+             :flags flags, :result (str c e-sign (:result pdigit-res))})
+          {:errors (expected "decimal digit"), :state next-state, :flags flags, :result (str c e-sign)}))
+      {:errors errors, :state state, :flags flags, :result ""})))  
+        
+(defn- parse-decimal-literalE [options state flags]
+  (let [flags (conj flags :is-decimal)
+        integer-part-res (pdigits state)       
+        integer-part (:result integer-part-res)
+        flags (if integer-part (conj flags :has-integer-part) flags) 
+        fraction-part-res (pfraction-part options (:state integer-part-res) flags)
+        errors (:errors fraction-part-res)
+        fraction-state(:state fraction-part-res)
+        exp-part-res (pexponent-part options fraction-state flags errors)
+        errors (set/union errors (:errors exp-part-res))
+        flags (set/union flags (:flags fraction-part-res) (:flags exp-part-res))
+        result (str integer-part (:result fraction-part-res) (:result exp-part-res))]
+    {:errors errors, :flags flags, :result result, :state (:state exp-part-res)}))
+
+(defn parse-other-number-literalE [options state e-msg sign]
+  (throw (UnsupportedOperationException. "not implemented yet")))
+
+(defn parse-number-literalE [options state e-msg sign flags]
+  (let [frst (peep state)
         next-state (next-state state)
-        scnd (peek next-state)]
+        scnd (peep next-state)]
     (if (or (not= frst \0) 
-            (char-lte scnd \9) 
+            (char-lte? scnd \9) 
             (not (some options [:allow-binary :allow-hexadecimal :allow-octal]))
             (or (= scnd \e) (= scnd \E)))
-      (parse-decimal-literalE [options state e-msg sign])
-      (parse-other-number-litera [options state e-msg sign]))))
+      (parse-decimal-literalE options state flags)
+      (parse-other-number-literalE options state flags))))
 
-(defn number-literalE [options state e-msg]
-  (when-let [frst (peek state)]
-    (let [[sign new-state] (psign options frst state)]
-      (let [scnd (peek new-state)]
-        (if (or (is-digit? scnd) 
-                (and (= c \.) (:allow-fraction options) (:allow-fraction-wo-integer)))
-          (parse-number-literalE options new-state e-msg sign)
-          (if (or check-infi check-nan)
-            (make-success infi or check-nan)
-            (make-failure no-literal)))))))
+(defn prepare-result [result options] 
+  (let [state (:state result)
+        pascii (many-satisfy is-ascii-letter?)]
+    (if-not (:errors result)
+      (if-not (and (:allow-suffix options) (is-ascii-letter? (peep (:state result))))
+        (make-success state {:string (:result result), :flags (:flags result), :suf1 \uFFFF, :suf2 \uFFFF, :suf3 \uFFFF, :suf4 \uFFFF})
+        (throw (UnsupportedOperationException. "not implemented yet")))
+    (make-failure state (make-parse-error state (:errors result))))))
 
-)
+(defn number-literalE [options e-msg]
+  (fn [state]
+    (if-let [frst (peep state)] ;can this be a let?
+	    (let [[sign new-state flags] (psign options frst state)]
+	      (let [scnd (peep new-state)]
+	        (if (or (is-digit? scnd) 
+	                (and (= scnd \.) (:allow-fraction options) (:allow-fraction-wo-integer options)))
+	          (prepare-result (parse-number-literalE options new-state e-msg sign flags) options)
+	          (if false;(or check-infi check-nan)
+	            (make-success state);infi or check-nan)
+	            (make-failure state (make-parse-error state e-msg))))))
+     (make-failure state (make-parse-error state e-msg)))))
+
+(defn number-literal [options label]
+  (number-literalE options label))
