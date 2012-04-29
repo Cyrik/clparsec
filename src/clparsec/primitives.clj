@@ -1,5 +1,5 @@
 (ns clparsec.primitives
-  (:use [clojure.algo.monads][clparsec.core])
+  (:use [clojure.algo.monads][clparsec.core][clparsec.errors])
   (:require [clojure [set :as set]]))
 
 (defn return [state]

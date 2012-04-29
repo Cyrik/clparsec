@@ -3,10 +3,8 @@
   (:use [clojure.test])
   (:use [clparsec.core])
   (:use [clparsec.test.helpers])
+  (:use [clparsec.errors])
   (:import (clparsec.core Reply)))
-
-
-          
 
 (deftest test-basics
   (rok (pchar \space) " " 1 \space )

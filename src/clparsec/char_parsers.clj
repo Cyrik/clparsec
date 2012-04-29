@@ -1,7 +1,7 @@
 (ns clparsec.char-parsers
-  (:use [clojure.algo.monads][clparsec.core][clparsec.primitives])
+  (:use [clojure.algo.monads][clparsec.core][clparsec.primitives][clparsec.errors])
   (:require [clojure [set :as set]])
-  (:import [clparsec.core ErrorMessage]
+  (:import [clparsec.errors ErrorMessage]
            [Character])
   (:refer-clojure :exclude #{newline}))
 
@@ -309,5 +309,21 @@
 	            (make-failure state (make-parse-error state e-msg))))))
      (make-failure state (make-parse-error state e-msg)))))
 
+(def default-float #{:allow-minus :allow-plus :allow-fraction
+                     :allow-exponent :allow-hexadecimal :allow-infinity :allow-nan})
+
 (defn number-literal [options label]
   (number-literalE options label))
+
+(defn pfloat [state]
+  (let [reply ((number-literal default-float (expected "floating point number")) state)]
+    (if (success? reply)
+      (let [nl (:result reply)]
+        (try
+          (if (:is-decimal (:flags nl))
+            (make-success (:state reply) (Double/valueOf (:string nl))))
+            (catch NumberFormatException e 
+              (make-fatal-error (:state reply) 
+                                (make-parse-error (:state reply) (message-error "The floating-point number has an invalid format 
+(this error is unexpected, please report this error message to https://github.com/Cyrik/clparsec/issues)."))))))
+      reply)))
