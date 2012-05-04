@@ -252,7 +252,7 @@
       (let [flags (conj flags :has-exponent)
             next-state (skip-one state)
             [e-sign next-state] (p-exp-sign next-state)]
-        (if-not (is-digit? (peep state))
+        (if (is-digit? (peep next-state))
           (let [pdigit-res (pdigits next-state)]
             {:errors nil, :state (:state pdigit-res),
              :flags flags, :result (str c e-sign (:result pdigit-res))})

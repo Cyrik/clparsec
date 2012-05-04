@@ -6,12 +6,16 @@
 (def ^:dynamic *newline-chars* #{\return \newline "\r\n"})
 (def ^:dynamic *whitespace* #{\space \tab \newline \return \formfeed})
 (defprotocol AReply
-  (success? [r]))
+  (success? [r])
+  (result [r])
+  (errors [r]))
 
 (defrecord Reply
   [status result errors state]
   AReply
-  (success? [this] (if (= status :success) true false)))
+  (success? [this] (if (= status :success) true false))
+  (result [this] result)
+  (errors [this] errors))
 
 (defprotocol ALocation
   (location-code [location]))
@@ -124,7 +128,7 @@
                        (if (< i length)
                          (when (=(nth strn i) (nth remainder i))
                            (recur (inc i)))
-                         (assoc this :remainder (.substring remainder i)
+                         (assoc this :remainder (drop i remainder)
                                 :position (+ position i)
                                 :location (plus-column location i)))))))
     (read-chars-or-newlines-while [this pred1 pred normalize-n] ;todo normalize newlines
