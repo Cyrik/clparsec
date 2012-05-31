@@ -5,7 +5,7 @@
 (defn result-success-internal [with-newline content nskipped-chars result errors parser]
   (let [state (make-state content)
         res (parser state)]
-    (do 
+    (do
       (is (success? res))
       (is (= (:result res) result))
       (is (= (:messages (:errors res)) errors))
@@ -13,12 +13,12 @@
       (if with-newline
         (is (=(:line (location (:state res))) 2))))))
 
-(defn rok 
+(defn rok
   "result ok"
   [parser content n-skipped-chars result]
   (result-success-internal false content n-skipped-chars result nil parser))
 
-(defn roke 
+(defn roke
   "result ok with error messages"
   [parser content n-skipped-chars result errors]
   (result-success-internal false content n-skipped-chars result errors parser))
@@ -58,4 +58,3 @@
    #(make-success (assoc % :user-state (+ 1 (user-state %))) result errors)
    #(make-failure % errors)
    #(make-failure (assoc % :user-state (+ 1 (user-state %))) errors)])
-    

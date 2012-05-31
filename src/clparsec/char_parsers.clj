@@ -1,15 +1,14 @@
 (ns clparsec.char-parsers
-  (:use [clojure.algo.monads][clparsec.core][clparsec.primitives][clparsec.errors])
-  (:require [clojure [set :as set]])
+  (:use [clojure.algo.monads]
+        [clparsec core primitives errors])
+  (:require [clojure.set :as set])
   (:import [clparsec.errors ErrorMessage]
            [Character])
   (:refer-clojure :exclude #{newline}))
 
-
-
 (defn expected-string [str]
   (ErrorMessage. :expected-string str))
-    
+
 (def expected-any-char
   (ErrorMessage. :expected-any-char "any character"))
 
@@ -40,23 +39,22 @@
     *newline-chars* (newline-return result)
     #{\uFFFF} (throw (IllegalArgumentException. "\uffff (EOS) is not a valid char for pchar/skip-char/char-return"))
     (char-returnE c result (expected-string c))))
-  
+
 (defn pchar [c]
   (char-return c c))
 
-(defn skip-char [c] 
+(defn skip-char [c]
   (char-return c nil))
 
 (defn any-char [state]
-    (if-let [[s c] (read-char-or-newline state)]
-      (make-success s c)
-      (make-failure state (make-parse-error state expected-any-char))))
-      
-(defn skip-any-char [state]
-    (if-let [[s c] (read-char-or-newline state)]
-      (make-success s nil)
-      (make-failure state (make-parse-error state expected-any-char))))
+  (if-let [[s c] (read-char-or-newline state)]
+    (make-success s c)
+    (make-failure state (make-parse-error state expected-any-char))))
 
+(defn skip-any-char [state]
+  (if-let [[s c] (read-char-or-newline state)]
+    (make-success s nil)
+    (make-failure state (make-parse-error state expected-any-char))))
 
 (defn- satisfyE [pred e-msg]
   (fn [state]
@@ -123,7 +121,7 @@
   (skip-satisfyE (comp not chars) (expected-any-char-not-in chars)))
 
 (defn- char-lte? [a b]
-  (<=(.compareTo a b) 0)) 
+  (<=(.compareTo a b) 0))
 (defn- char-gte? [a b]
   (>= (.compareTo a b) 0))
 
@@ -184,7 +182,7 @@
         (if (newline-eos(nth s i))
           i
           (recur (dec i)))))))
-  
+
 (defn string! [strn result]
   (if-let [newline (find-newline-or-eos strn)]
     (throw (IllegalArgumentException. "string! may not contain newline in string"))
@@ -257,13 +255,13 @@
             {:errors nil, :state (:state pdigit-res),
              :flags flags, :result (str c e-sign (:result pdigit-res))})
           {:errors (expected "decimal digit"), :state next-state, :flags flags, :result (str c e-sign)}))
-      {:errors errors, :state state, :flags flags, :result ""})))  
-        
+      {:errors errors, :state state, :flags flags, :result ""})))
+
 (defn- parse-decimal-literalE [options state flags]
   (let [flags (conj flags :is-decimal)
-        integer-part-res (pdigits state)       
+        integer-part-res (pdigits state)
         integer-part (:result integer-part-res)
-        flags (if integer-part (conj flags :has-integer-part) flags) 
+        flags (if integer-part (conj flags :has-integer-part) flags)
         fraction-part-res (pfraction-part options (:state integer-part-res) flags)
         errors (:errors fraction-part-res)
         fraction-state(:state fraction-part-res)
@@ -280,40 +278,43 @@
   (let [frst (peep state)
         next-state (next-state state)
         scnd (peep next-state)]
-    (if (or (not= frst \0) 
-            (char-lte? scnd \9) 
+    (if (or (not= frst \0)
+            (char-lte? scnd \9)
             (not (some options [:allow-binary :allow-hexadecimal :allow-octal]))
             (or (= scnd \e) (= scnd \E)))
       (parse-decimal-literalE options state flags)
       (parse-other-number-literalE options state flags))))
 
-(defn prepare-result [result options] 
+(defn prepare-result [result options]
   (let [state (:state result)
         pascii (many-satisfy is-ascii-letter?)]
     (if-not (:errors result)
       (if-not (and (:allow-suffix options) (is-ascii-letter? (peep (:state result))))
         (make-success state {:string (:result result), :flags (:flags result), :suf1 \uFFFF, :suf2 \uFFFF, :suf3 \uFFFF, :suf4 \uFFFF})
         (throw (UnsupportedOperationException. "not implemented yet")))
-    (make-failure state (make-parse-error state (:errors result))))))
+      (make-failure state (make-parse-error state (:errors result))))))
 
 (defn number-literalE [options e-msg]
   (fn [state]
     (if-let [frst (peep state)] ;can this be a let?
-	    (let [[sign new-state flags] (psign options frst state)]
-	      (let [scnd (peep new-state)]
-	        (if (or (is-digit? scnd) 
-	                (and (= scnd \.) (:allow-fraction options) (:allow-fraction-wo-integer options)))
-	          (prepare-result (parse-number-literalE options new-state e-msg sign flags) options)
-	          (if false;(or check-infi check-nan)
-	            (make-success state);infi or check-nan)
-	            (make-failure state (make-parse-error state e-msg))))))
-     (make-failure state (make-parse-error state e-msg)))))
+      (let [[sign new-state flags] (psign options frst state)]
+        (let [scnd (peep new-state)]
+          (if (or (is-digit? scnd)
+                  (and (= scnd \.) (:allow-fraction options) (:allow-fraction-wo-integer options)))
+            (prepare-result (parse-number-literalE options new-state e-msg sign flags) options)
+            (if false;(or check-infi check-nan)
+              (make-success state);infi or check-nan)
+              (make-failure state (make-parse-error state e-msg))))))
+      (make-failure state (make-parse-error state e-msg)))))
 
 (def default-float #{:allow-minus :allow-plus :allow-fraction
                      :allow-exponent :allow-hexadecimal :allow-infinity :allow-nan})
 
 (defn number-literal [options label]
   (number-literalE options label))
+
+(def ^{:private true} fp-error-msg
+  "The floating-point number has an invalid format (this error is unexpected, please report this error message to https://github.com/Cyrik/clparsec/issues).")
 
 (defn pfloat [state]
   (let [reply ((number-literal default-float (expected "floating point number")) state)]
@@ -322,8 +323,7 @@
         (try
           (if (:is-decimal (:flags nl))
             (make-success (:state reply) (Double/valueOf (:string nl))))
-            (catch NumberFormatException e 
-              (make-fatal-error (:state reply) 
-                                (make-parse-error (:state reply) (message-error "The floating-point number has an invalid format 
-(this error is unexpected, please report this error message to https://github.com/Cyrik/clparsec/issues)."))))))
+          (catch NumberFormatException e
+            (make-fatal-error (:state reply)
+                              (make-parse-error (:state reply) (message-error fp-error-msg))))))
       reply)))

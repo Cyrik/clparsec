@@ -1,6 +1,7 @@
 (ns clparsec.demos.tutorial
-  (:use [clojure.algo.monads][clparsec.core][clparsec.primitives][clparsec.char-parsers])
-  (:require [clojure [set :as set]])
+  (:use [clojure.algo.monads]
+        [clparsec core primitives char-parsers])
+  (:require [clojure.set :as set])
   (:import [clparsec.errors ErrorMessage]
            [Character])
   (:refer-clojure :exclude #{newline}))
@@ -26,4 +27,3 @@
 (test-parse float-between-brackets "[1.0")
 
 ;;;;;;;;;;;;;; abstracting parsers ;;;;;;;;;;;;;;;;
-

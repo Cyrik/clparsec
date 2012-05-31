@@ -1,9 +1,7 @@
 (ns clparsec.test.char-parsers
-  (:use [clparsec.char-parsers])
+  (:use [clparsec core char-parsers errors])
   (:use [clojure.test])
-  (:use [clparsec.core])
   (:use [clparsec.test.helpers])
-  (:use [clparsec.errors])
   (:import (clparsec.core Reply)))
 
 (deftest test-basics
@@ -17,7 +15,7 @@
   (rfail pnewline "_\n" 0 #{(expected "newline")})
   (rfail pnewline "" 0 #{(expected "newline")}))
 
-(deftest test-newlines-ok  
+(deftest test-newlines-ok
   (roknl pnewline "\r" 1 \newline)
   (roknl (pchar \newline) "\r" 1 \newline)
   (roknl (pchar \return) "\r" 1 \return)
@@ -26,18 +24,18 @@
   (roknl (pchar \newline) "\n" 1 \newline)
   (roknl (pchar \return) "\n" 1 \return))
 
-(deftest test-char-return  
+(deftest test-char-return
   (rok (skip-char \tab) "\t" 1 nil)
   (rok (char-return \tab 0) "\t" 1 0)
   (roknl skip-nl "\n" 1 nil)
-  (roknl (newline-return 0) "\r\n" 2 0) 
-  
+  (roknl (newline-return 0) "\r\n" 2 0)
+
   (is (thrown? IllegalArgumentException (pchar \uffff))))
 
 (deftest test-any-char
   (rfail any-char "" 0 #{expected-any-char})
   (rfail skip-any-char "" 0 #{expected-any-char})
-  
+
   (rok any-char " " 1 \space)
   (rok any-char "\ufffe" 1 \ufffe)
   (rok skip-any-char " " 1 nil)

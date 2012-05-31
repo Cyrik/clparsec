@@ -1,9 +1,11 @@
 (ns clparsec.primitives
-  (:use [clojure.algo.monads][clparsec.core][clparsec.errors])
-  (:require [clojure [set :as set]]))
+  (:use [clojure.algo.monads]
+        [clparsec core errors])
+  (:require [clojure.set :as set]))
 
 (defn return [state]
   (make-success state))
+
 (defn zero [state]
   (make-failure state (make-parse-error state #{})))
 
@@ -18,7 +20,7 @@
 
 (defn >>! [p x]
   (fn [state]
-      (assoc (p state) :result x)))
+    (assoc (p state) :result x)))
 
 (defn >>| [p q]
   (fn [state]
@@ -26,7 +28,7 @@
       (if (success? reply1)
         (let [reply2 (q (:state reply1))]
           (merge-reply-errors reply1 reply2))
-      reply1))))
+        reply1))))
 
 (defn |>> [p q]
   (fn [state]
@@ -48,8 +50,6 @@
           (assoc reply2 :errors (merge-errors (:errors reply1) (:errors reply2))
                  :result (list (:result reply1) (:result reply2))))
         reply1))))
-
-
 
 (defn between [op cl p]
   (fn [state]
@@ -83,13 +83,13 @@
             (if (success? reply)
               (recur (rest parsers) (:state reply) (conj acc reply))
               (apply merge-reply-errors (reverse (conj acc reply)))))
-          (assoc (peek acc) 
-                 :result (apply f (map :result acc))
-                 :errors (apply merge-errors (:errors acc))))))))
+          (assoc (peek acc)
+            :result (apply f (map :result acc))
+            :errors (apply merge-errors (:errors acc))))))))
 
 ;;;;;;;;;;;;;;;; parsing alternatives ;;;;;;;;;;;;;;;;
 
-(defn <|> [p q] 
+(defn <|> [p q]
   (fn [state]
     (let [reply1 (p state)]
       (if (or (success? reply1) (not=(:state reply1) state))
@@ -108,8 +108,8 @@
             (merge-reply-errors replys reply)
             (recur (rest parsers) (merge-reply-errors replys reply))))))))
 
-;(defn choiceL [& parsers]
-;  (fn [state]))
+;;(defn choiceL [& parsers]
+;;  (fn [state]))
 
 (defn <|>! [parser x]
   (fn [state]
@@ -154,7 +154,7 @@
       (if (= state (:state reply))
         (swap-error-messages (expected-list label))
         reply))))
-    
+
 
 ;;;;;;;;;;;;;;; seq parsers ;;;;;;;;;;;;;;;;;;
 
@@ -166,16 +166,16 @@
            s state
            acc nil]
       (if (< i n)
-          (let [reply (parser s)]
-            ;(println reply)
-            (if (success? reply)
-              (recur (inc i) (:state reply) (conj acc reply))
-              (apply merge-reply-errors (reverse (conj acc reply)))))
-          (assoc (peek acc) 
-                 :result (map :result acc)
-                 :errors (apply merge-errors (:errors acc)))))))
+        (let [reply (parser s)]
+          ;;(println reply)
+          (if (success? reply)
+            (recur (inc i) (:state reply) (conj acc reply))
+            (apply merge-reply-errors (reverse (conj acc reply)))))
+        (assoc (peek acc)
+          :result (map :result acc)
+          :errors (apply merge-errors (:errors acc)))))))
 
-;(defn skip-array)
+;;(defn skip-array)
 (defn many-internal [result-from-empty parser]
   (fn [state]
     (let [frst-reply (parser state)]
@@ -183,7 +183,7 @@
         (loop [s (:state frst-reply)
                acc (list frst-reply)]
           (let [reply (parser s)]
-            ;(println reply)
+            ;;(println reply)
             (if (success? reply)
               (recur (:state reply) (conj acc reply))
               (if (= (:state reply) s)
@@ -192,12 +192,12 @@
         (if (and (= (:state frst-reply) state) result-from-empty)
           (make-success state result-from-empty)
           frst-reply)))))
-        
+
 (def many (partial many-internal true))
 (def many1 (partial many-internal false))
 
-;(defn skip-many)
-;(defn skip-many1)
+;;(defn skip-many)
+;;(defn skip-many1)
 
 (defn sep-by-internal [result-from-first fold-state result-from-rest result-from-empty sep-may-end parser-p parser-s]
   (fn [state]
@@ -208,17 +208,17 @@
                acc-e (:errors frst-reply)]
           (let [reply-s (parser-s s)
                 reply-p (parser-p (:state reply-s))]
-            ;(println reply-s "\n\n" reply-p "\n\n" acc-e)
-            ;(println "!!!!!!!!    " acc-r)
+            ;;(println reply-s "\n\n" reply-p "\n\n" acc-e)
+            ;;(println "!!!!!!!!    " acc-r)
             (if (and (success? reply-s) (success? reply-p))
-              (recur (:state reply-p) 
+              (recur (:state reply-p)
                      (fold-state acc-r (:result reply-s) (:result reply-p))
                      (conj acc-e (:errors reply-s) (:errors reply-p)))
               (if (and (not (success? reply-s)) (= (:state reply-s) s)) ;didnt parse seperator as final one and sep didnt consume?
-                (make-success s (result-from-rest acc-r) 
-                              (apply merge-errors (reverse (conj acc-e (:errors reply-s))))) 
+                (make-success s (result-from-rest acc-r)
+                              (apply merge-errors (reverse (conj acc-e (:errors reply-s)))))
                 (let [errors (apply merge-errors (reverse (conj acc-e (:errors reply-s)(:errors reply-p))))]
-                  (if (and sep-may-end (not(success? reply-p)) (= (:state reply-s)(:state reply-p))) 
+                  (if (and sep-may-end (not(success? reply-p)) (= (:state reply-s)(:state reply-p)))
                     (make-success (:state reply-s) (result-from-rest acc-r) errors)
                     (if-not (success? reply-p)
                       (assoc reply-p :errors errors)
